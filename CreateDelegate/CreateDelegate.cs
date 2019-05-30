@@ -114,9 +114,35 @@ namespace CreateDelegate
                 throw new ArgumentException($"{delegateType.FullName} is not a delegate type");
             }
 
-            //TODO: implement this method such that the unit tests pass
+            MethodInfo mi = delegateType.GetMethod("Invoke");
 
-            return null;
+            var dm = new DynamicMethod($"<AutoGen_{delegateType.FullName}>", mi.ReturnType, mi.GetParameters().Select(x => x.ParameterType).ToArray());
+
+            ILGenerator generator = dm.GetILGenerator();
+
+            if (mi.ReturnType == typeof(void))
+            { }
+            else if (mi.ReturnType.IsValueType)
+            {
+                generator.Emit(OpCodes.Ldc_I4_0);
+            }
+            else if (mi.ReturnType == typeof(Task))
+            {
+                generator.Emit(OpCodes.Call, typeof(Task).GetProperty(nameof(Task.CompletedTask)).GetMethod);
+            }
+            else if (mi.ReturnType.IsGenericType && mi.ReturnType.GetGenericTypeDefinition() == typeof(Task<>))
+            {
+                var taskReturnType = mi.ReturnType.GetGenericArguments().First();
+                generator.Emit(OpCodes.Ldc_I4_0);
+                generator.Emit(OpCodes.Call, typeof(Task).GetMethod(nameof(Task.FromResult)).MakeGenericMethod(taskReturnType));
+            }
+            else
+            {
+                generator.Emit(OpCodes.Ldnull);
+            }
+            generator.Emit(OpCodes.Ret);
+
+            return dm.CreateDelegate(delegateType);
         }
     }
 }
