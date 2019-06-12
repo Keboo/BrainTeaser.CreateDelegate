@@ -133,6 +133,10 @@ namespace CreateDelegate
             else if (mi.ReturnType.IsGenericType && mi.ReturnType.GetGenericTypeDefinition() == typeof(Task<>))
             {
                 var taskReturnType = mi.ReturnType.GetGenericArguments().First();
+                //This also works for reference types:
+                //"Note that object references and pointer types can be assigned the value null. This is defined throughout the
+                // CLI to be zero(a bit pattern of all-bits - zero)."
+                // See http://download.microsoft.com/download/7/3/3/733AD403-90B2-4064-A81E-01035A7FE13C/MS%20Partition%20III.pdf
                 generator.Emit(OpCodes.Ldc_I4_0);
                 generator.Emit(OpCodes.Call, typeof(Task).GetMethod(nameof(Task.FromResult)).MakeGenericMethod(taskReturnType));
             }
